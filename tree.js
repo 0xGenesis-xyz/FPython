@@ -37,7 +37,81 @@ function parseTree(root) {
             case 81:    // string
                 return Data(Data.t_string, root.getChild(0).symbol.text);
                 break;
-			case 40:	//for_stmt
+            case 75:    // argument no comp_for
+                switch (root.getChildCount) {
+                    case 1:
+                        return parseTree(root.getChild(0));
+                        break;
+                    case 3:
+                        var leftNode = root.getChild(0));
+                        var left = getVariableName(leftNode);
+                        var right = parseTree(root.getChild(2));
+                        hashVar[left] = right.val;
+                        break;
+                }
+                break;
+            case 74:    // arglist no star
+                var res = new Array();
+                for (var i = 0; i<root.getChildCount(); i++) {
+                    var child = root.getChild(i);
+                    if (child.symbol.text != ',')
+                        res.push(parseTree(child));
+                }
+                return Data(Data.t_array, res);
+                break;
+            case 71:    //testlist
+                var testNode = root.getChild(0);
+                var res = new Array();
+                res.push(parseTree(testNode));
+                for(var i = 2; i<n ; i+=2)
+                    res.push(parseTree(root.getChild(i)));
+                return Data(Data.t_array,res);
+            case 70:    //exprlist 只处理了只有一个star_expr的情况
+                var star_exprNode = root.getChild(0);
+                var star_exprRes = parseTree(star_exprNode);
+                return star_exprRes;
+            case 66:    // trailer
+                var child0 = root.getChild(0);
+                var ch = child0.symbol.text;
+                switch (ch) {
+                    case '(':
+                        if (root.getChildCount() > 2) {
+                            return parseTree(root.getChild(1));
+                        }
+                        break;
+                    case '[':
+                        return parseTree(root.getChild(1));
+                        break;
+                    case '.':
+                        return parseTree(root.getChild(1));
+                        break;
+                }
+                break;
+            case 64:    // atom
+            case 55:    //star_expr 直接去掉star
+                var exprNode;
+                if( n == 2 )
+                    exprNode = root.getChild(1);
+                else
+                    exprNode = root.getChild(0);
+                return parseTree(exprNode);
+            case 46:    // test no if else
+                var child0 = root.getChild(0);
+                if (child0.ruleIndex == 50) {
+                    return parseTree(child0);
+                }
+                if (child0.ruleIndex == 48) {
+                    return parseTree(child0);
+                }
+                break;
+            case 45:   //suite
+                if( n == 1 ) return parseTree(root.getChild(0));
+                else {
+                    for(var i=2; i<n-1; i++)
+                        parseTree(root.getChild(i)+'suite_');
+                    return Data(Data.t_null,0);
+                }
+			case 40:
 				var exprlistNode = root.getChild(1);
 				var testlistNode = root.getChild(3);
 				var suiteNode = root.getChild(5);
@@ -50,67 +124,66 @@ function parseTree(root) {
 					parseTree(suiteNode+'for_');
 				}
 				return Data(Data.t_null,0);
-			case 70:	//exprlist 只处理了只有一个star_expr的情况
-				var star_exprNode = root.getChild(0);
-				var star_exprRes = parseTree(star_exprNode);
-				return star_exprRes;
-			case 16:	//star_expr 直接去掉star
-				var exprNode;
-				if( n == 2 )
-					exprNode = root.getChild(1);
-				else
-					exprNode = root.getChild(0);
-				return parseTree(exprNode);
-			case 71:	//testlist
-				var testNode = root.getChild(0);
-				var res = new Array();
-				res.push(parseTree(testNode));
-				for(var i = 2; i<n ; i+=2)
-					res.push(parseTree(root.getChild(i)));
-				return Data(Data.t_array,res);
-			case  45:	//suite
-				if( n == 1 ) return parseTree(root.getChild(0));
-				else {
-					for(var i=2; i<n-1; i++)
-						parseTree(root.getChild(i)+'suite_');
-					return Data(Data.t_null,0);
-				}
-			case 13:	//simple_stmt
-				for(var i=0; i<n; i+=2)
-					parseTree(root.getChild(i));	
-				return Data(Data.t_null,0);
-			case 14:	//small_stmt
-				return parseTree(root.getChild(0));
-			case 15:	//expr_stmt
-				var testlist_star_exprNode = root.getChild(0);
-				var testlist_star_exprRes = getVariableName(testlist_star_exprNode);
-				for(var i=1; i<2;i++)
-				{
-					var node = root.getChild(i);
-					var res;
-					if( node.ruleIndex == 17 ) // augassign
-					{
-						var augassignRes = parseTree(node);
-						var testlistRes = parseTree(root.getChild(i+1));
-						switch(augassignRes)
-						{
-							case "+=":hashVar[testlist_star_exprRes]+=testlistRes.val;break;
-							case "-=":hashVar[testlist_star_exprRes]-=testlistRes.val;break;
-							case "*=":hashVar[testlist_star_exprRes]*=testlistRes.val;break;
-							case "/=":hashVar[testlist_star_exprRes]/=testlistRes.val;break;
-							case "%=":hashVar[testlist_star_exprRes]%=testlistRes.val;break;
-							case "&=":hashVar[testlist_star_exprRes]&=testlistRes.val;break;
-							case "|=":hashVar[testlist_star_exprRes]|=testlistRes.val;break;
-							case "^=":hashVar[testlist_star_exprRes]^=testlistRes.val;break;
-							case "<<=":hashVar[testlist_star_exprRes]<<=testlistRes.val;break;
-							case ">>=":hashVar[testlist_star_exprRes]>>=testlistRes.val;break;
-						}
-						i+=2;
-					} else {
-						hashVar[testlist_star_exprRes] =  parseTree(root.getChild(i+1));
-					}
-				}
-				return hashVar[testlist_star_exprRes];
+            case 38:    // if_stmt no else
+                var testNode = root.getChild(1);
+                var suiteNode = root.getChild(3);
+
+                var test = parseTree(testNode);
+                if (test.val == true) {
+                    return parseTree(suiteNode);
+                }
+                break;
+            case 37:    // compound_stmt
+                parseTree(root.getChild(0));
+                break;
+            case 16:    // testlist_star_expr
+                var res = new Array();
+                for (var i = 0; i<root.getChildCount(); i++) {
+                    var child = root.getChild(i);
+                    if (child.symbol.text != ',')
+                        res.push(parseTree(child));
+                }
+                return Data(Data.t_array, res);
+                break;
+            case 15:    //expr_stmt
+                var testlist_star_exprNode = root.getChild(0);
+                var testlist_star_exprRes = getVariableName(testlist_star_exprNode);
+                for(var i=1; i<2;i++)
+                {
+                    var node = root.getChild(i);
+                    var res;
+                    if( node.ruleIndex == 17 ) // augassign
+                    {
+                        var augassignRes = parseTree(node);
+                        var testlistRes = parseTree(root.getChild(i+1));
+                        switch(augassignRes)
+                        {
+                            case "+=":hashVar[testlist_star_exprRes]+=testlistRes.val;break;
+                            case "-=":hashVar[testlist_star_exprRes]-=testlistRes.val;break;
+                            case "*=":hashVar[testlist_star_exprRes]*=testlistRes.val;break;
+                            case "/=":hashVar[testlist_star_exprRes]/=testlistRes.val;break;
+                            case "%=":hashVar[testlist_star_exprRes]%=testlistRes.val;break;
+                            case "&=":hashVar[testlist_star_exprRes]&=testlistRes.val;break;
+                            case "|=":hashVar[testlist_star_exprRes]|=testlistRes.val;break;
+                            case "^=":hashVar[testlist_star_exprRes]^=testlistRes.val;break;
+                            case "<<=":hashVar[testlist_star_exprRes]<<=testlistRes.val;break;
+                            case ">>=":hashVar[testlist_star_exprRes]>>=testlistRes.val;break;
+                        }
+                        i+=2;
+                    } else {
+                        hashVar[testlist_star_exprRes] =  parseTree(root.getChild(i+1));
+                    }
+                }
+                return hashVar[testlist_star_exprRes];
+            case 14:    //small_stmt
+                return parseTree(root.getChild(0));
+            case 13:    //simple_stmt
+                for(var i=0; i<n; i+=2)
+                    parseTree(root.getChild(i));    
+                return Data(Data.t_null,0);
+            case 12:    // stmt
+                return parseTree(root.getChild(0));
+                break;
         }
     }
 }
