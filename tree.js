@@ -1,4 +1,4 @@
-function printTree(root, indent=0) {
+function printTree(root, indent) {
     if (!root) return;
     for (var i = 0; i < indent; i++) {
         document.getElementById("tree").innerHTML += ".&nbsp";
@@ -17,7 +17,7 @@ function printTree(root, indent=0) {
     }
 }
 
-function parseTree(root) {
+function parseTree(root,namespace) {
     if (!root) return;
     var n = root.getChildCount();
     if (n == 0) { // Leaf node
@@ -30,11 +30,23 @@ function parseTree(root) {
                 return Data(Data.t_integer, parseInt(root.getChild(0).symbol.text));
                 break;
             case 82:    // number
-                return parseTree(root.getChild(0));
+                return parseTree(root.getChild(0),namespace);
                 break;
             case 81:    // string
                 return Data(Data.t_string, root.getChild(0).symbol.text);
                 break;
+			case 40:
+				var exprlistNode = root.getChild(1);
+				var testlistNode = root.getChild(3);
+				var suiteNode = root.getChild(5);
+				
+				var exprlistRes = parseTree(exprlistNode);
+				var testlistRes = parseTree(testlistNode);
+				for(int i=0;i<testlistRes.length;i++)
+				{
+					hashVar[namespac+'for_'+exprlistRes.val] = testlistRes.val[i];
+					parseTree(suiteNode,namespace+'for_');
+				}
         }
     }
 }
@@ -45,6 +57,7 @@ function Data(type, val) {
 }
 
 Data.t_integer = 0;
+Data.t_string = 0;
 
 var antlr4 = require('antlr4/index');
 var FPython1Lexer = require('FPython1Lexer');
@@ -59,7 +72,7 @@ document.getElementById("parse").addEventListener("click", function(){
     parser.buildParseTrees = true;
     var tree = parser.file_input();
     console.log(tree);
-    printTree(tree);
+    printTree(tree,0);
     //parseTree(tree);
 });
     
