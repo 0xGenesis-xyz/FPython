@@ -51,21 +51,15 @@ function parseTree(root) {
                 }
                 break;
             case 74:    // arglist no star
+            case 71:    // testlist
+            case 65:    // testlist_comp no comp_for
+            case 16:    // testlist_star_expr no star_expr
                 var res = new Array();
-                for (var i = 0; i<root.getChildCount(); i++) {
-                    var child = root.getChild(i);
-                    if (child.symbol.text != ',')
-                        res.push(parseTree(child));
+                for (var i = 0; i<root.getChildCount(); i+=2) {
+                    res.push(parseTree(root.getChild(i)));
                 }
                 return Data(Data.t_array, res);
                 break;
-            case 71:    //testlist
-                var testNode = root.getChild(0);
-                var res = new Array();
-                res.push(parseTree(testNode));
-                for(var i = 2; i<n ; i+=2)
-                    res.push(parseTree(root.getChild(i)));
-                return Data(Data.t_array,res);
             case 70:    //exprlist 只处理了只有一个star_expr的情况
                 var star_exprNode = root.getChild(0);
                 var star_exprRes = parseTree(star_exprNode);
@@ -250,15 +244,6 @@ function parseTree(root) {
                 break;
             case 37:    // compound_stmt
                 parseTree(root.getChild(0));
-                break;
-            case 16:    // testlist_star_expr
-                var res = new Array();
-                for (var i = 0; i<root.getChildCount(); i++) {
-                    var child = root.getChild(i);
-                    if (child.symbol.text != ',')
-                        res.push(parseTree(child));
-                }
-                return Data(Data.t_array, res);
                 break;
             case 15:    //expr_stmt
                 var testlist_star_exprNode = root.getChild(0);
