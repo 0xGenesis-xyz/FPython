@@ -29,25 +29,23 @@ function parseTree(root) {
         var ruleIndex = root.ruleIndex;
         switch (ruleIndex) {
             case 83:    // integer
-                return Data(Data.t_integer, parseInt(root.getChild(0).symbol.text));
+                return new Data(Data.t_integer, parseInt(root.getChild(0).symbol.text));
                 break;
             case 82:    // number
                 return parseTree(root.getChild(0));
                 break;
             case 81:    // string
-                return Data(Data.t_string, root.getChild(0).symbol.text);
+                return new Data(Data.t_string, root.getChild(0).symbol.text);
                 break;
             case 75:    // argument no comp_for
-                switch (root.getChildCount) {
-                    case 1:
-                        return parseTree(root.getChild(0));
-                        break;
-                    case 3:
-                        var leftNode = root.getChild(0));
-                        var left = getVariableName(leftNode);
-                        var right = parseTree(root.getChild(2));
-                        hashVar[left] = right.val;
-                        break;
+                if (n == 1) {
+                    return parseTree(root.getChild(0));
+                }
+                else if (n == 3) {    // assignment
+                    var leftNode = root.getChild(0);
+                    var left = getVariableName(leftNode);
+                    var right = parseTree(root.getChild(2));
+                    hashVar[left] = right;
                 }
                 break;
             case 74:    // arglist no star
@@ -57,7 +55,7 @@ function parseTree(root) {
                     if (child.symbol.text != ',')
                         res.push(parseTree(child));
                 }
-                return Data(Data.t_array, res);
+                return new Data(Data.t_array, res);
                 break;
             case 71:    //testlist
                 var testNode = root.getChild(0);
@@ -65,7 +63,7 @@ function parseTree(root) {
                 res.push(parseTree(testNode));
                 for(var i = 2; i<n ; i+=2)
                     res.push(parseTree(root.getChild(i)));
-                return Data(Data.t_array,res);
+                return new Data(Data.t_array,res);
             case 70:    //exprlist 只处理了只有一个star_expr的情况
                 var star_exprNode = root.getChild(0);
                 var star_exprRes = parseTree(star_exprNode);
@@ -94,9 +92,9 @@ function parseTree(root) {
                     if (childN == 0) {    // child is a leaf, NAME, NONE, TRUE, FALSE
                         var literal = child.getChild(0).symbol.text;
                         switch (literal) {
-                            case "True": return Data(Data.t_bool, true); break;
-                            case "False": return Data(Data.t_bool, false); break;
-                            case "None": return Data(Data.t_bool, null); break;
+                            case "True": return new Data(Data.t_bool, true); break;
+                            case "False": return new Data(Data.t_bool, false); break;
+                            case "None": return new Data(Data.t_bool, null); break;
                             default:
                                 var data = hashVar[literal];
                                 if (data) {
@@ -125,7 +123,7 @@ function parseTree(root) {
                     var atom = parseTree(root.getChild(0));
                     var factor = parseTree(root.getChild(1));
                     var power = calcPower(atom, factor);
-                    return Data(Data.t_integer, power);
+                    return new Data(Data.t_integer, power);
                 }
                 else if (n == 4) {    // power: atom trailer ** factor
                     var atom = parseTree(root.getChild(0));
@@ -133,7 +131,7 @@ function parseTree(root) {
                     var factor = parseTree(root.getChild(3));
                     var evaled = evalTrailer(atom, trailer);
                     var power = calcPower(value, factor);
-                    return Data(Data.t_integer, power);
+                    return new Data(Data.t_integer, power);
                 }
                 else {
                     alert("power arg n");
@@ -203,7 +201,7 @@ function parseTree(root) {
                 if (n == 2) {
                     var boolean = parseTree(root.getChild(1));
                     if (boolean.type == Data.t_bool) {
-                        return Data(Data.t_bool, !boolean.val);
+                        return new Data(Data.t_bool, !boolean.val);
                     }
                     else {
                         alert("Logic operation on non-bool value");
@@ -224,7 +222,7 @@ function parseTree(root) {
                 else {
                     for(var i=2; i<n-1; i++)
                         parseTree(root.getChild(i)+'suite_');
-                    return Data(Data.t_null,0);
+                    return new Data(Data.t_null,0);
                 }
 			case 40:     //for_stmt
 				var exprlistNode = root.getChild(1);
@@ -238,7 +236,7 @@ function parseTree(root) {
 					hashVar[namespace+'for_'+exprlistRes] = testlistRes.val[i].val;
 					parseTree(suiteNode+'for_');
 				}
-				return Data(Data.t_null,0);
+				return new Data(Data.t_null,0);
             case 38:    // if_stmt no else
                 var testNode = root.getChild(1);
                 var suiteNode = root.getChild(3);
@@ -258,7 +256,7 @@ function parseTree(root) {
                     if (child.symbol.text != ',')
                         res.push(parseTree(child));
                 }
-                return Data(Data.t_array, res);
+                return new Data(Data.t_array, res);
                 break;
             case 15:    //expr_stmt
                 var testlist_star_exprNode = root.getChild(0);
@@ -271,6 +269,7 @@ function parseTree(root) {
                     {
                         var augassignRes = parseTree(node);
                         var testlistRes = parseTree(root.getChild(i+1));
+                        =====这里有问题 需要修改
                         switch(augassignRes)
                         {
                             case "+=":hashVar[testlist_star_exprRes]+=testlistRes.val;break;
@@ -295,7 +294,7 @@ function parseTree(root) {
             case 13:    //simple_stmt
                 for(var i=0; i<n; i+=2)
                     parseTree(root.getChild(i));    
-                return Data(Data.t_null,0);
+                return new Data(Data.t_null,0);
             case 12:    // stmt
                 return parseTree(root.getChild(0));
                 break;
@@ -303,7 +302,33 @@ function parseTree(root) {
     }
 }
 
-function getVariableName(){};
+function getVariableName(node) {
+    var n = node.getChildCount();
+    var child;
+    while (n > 0) {    // 不考虑 a[3] = 4 这样的赋值语句
+        child = node.getChild(0);
+        n = child.getChildCount();
+    }
+    // now child is a leaf node
+    return child.symbol.text;
+}
+
+function evalTrailer(atom, trailer) {
+    var atomName = getVariableName(atom);
+    var atomData = hashVar[atomName];
+    if (atomData) {
+        =====有待实现
+        if (atomData.type == Data.t_func) {    // function
+        }
+        else if (atomData.type == Data.t_array) {    // array
+        }
+        else if (atomData.type == Data.t_object) {    // object
+        }
+    }
+    else {
+        alert("Undefined atom name");
+    }
+}
 
 function calc(val1, val2, operator) {
     var res;
@@ -322,7 +347,7 @@ function calc(val1, val2, operator) {
             case "%": res = val1.val % val2.val; break;
             default: alert("Unknown arithmetic operator");
         }
-        return Data(Data.t_integer, res);
+        return new Data(Data.t_integer, res);
     }
     else if (val1.type == Data.t_bool && val2.type == Data.t_bool) {
         switch (operator) {
@@ -330,7 +355,7 @@ function calc(val1, val2, operator) {
             case "or": res = val1.val || val2.val; break;
             default: alert("Unknown logic operator");
         }
-        return Data(Data.t_bool, res);
+        return new Data(Data.t_bool, res);
     }
     else {
         alert("calc type error");
@@ -349,7 +374,7 @@ function comp(val1, val2, operator) {
             case "!=": res = val1.val != val2.val; break;
             default: alert("Unimplemented");
         }
-        return Data(Data.t_bool, res);
+        return new Data(Data.t_bool, res);
     }
     else {
         alert("comp type error");
@@ -360,11 +385,11 @@ function calcFactor(sign, factor) {
     if (factor.type == Data.t_integer) {
         switch (sign) {
             case "+":
-                return Data(Data.t_integer, factor.value);
+                return new Data(Data.t_integer, factor.value);
             case "-":
-                return Data(Data.t_integer, -(factor.value));
+                return new Data(Data.t_integer, -(factor.value));
             case "~":
-                return Data(Data.t_integer, ~(factor.value));
+                return new Data(Data.t_integer, ~(factor.value));
             default:
                 alert("Unknown factor sign");
         }
@@ -377,7 +402,7 @@ function calcFactor(sign, factor) {
 function calcPower(atom, trailer) {
     if (atom.type == Data.t_integer && trailer.type == Data.t_integer) {
         var power = Math.pow(atom.val, trailer.val);
-        return Data(Data.t_integer, power)
+        return new Data(Data.t_integer, power)
     }
     else {
         alert("calcPower");
@@ -391,11 +416,14 @@ function Data(type, val) {
 
 Data.t_integer = 0;
 Data.t_string = 1;
-Data.t_bool = 10;
 Data.t_null = 2;
 Data.t_array = 3;
 Data.t_error = 4;
 Data.t_key = 5;
+
+Data.t_bool = 10;
+Data.t_func = 11;
+Data.t_object = 12;
 
 var antlr4 = require('antlr4/index');
 var FPythonLexer = require('FPythonLexer');
