@@ -13,8 +13,6 @@ function printTree(root, indent) {
         document.getElementById("tree").innerHTML += root + "<br />";
     }
     for (i = 0; i < n; i++) {
-        if (root.ruleIndex == 64)
-            console.log(root);
         printTree(root.getChild(i), indent + 1);
     }
 }
@@ -23,7 +21,6 @@ function parseTree(root) {
     if (!root) return;
     var n = root.getChildCount();
     if (n == 0) { // Leaf node
-
     }
     else {
         var ruleIndex = root.ruleIndex;
@@ -35,7 +32,9 @@ function parseTree(root) {
                 return parseTree(root.getChild(0));
                 break;
             case 81:    // string
-                return new Data(Data.t_string, root.getChild(0).symbol.text);
+                var text = root.getChild(0).symbol.text;
+                text = text.substring(1, text.length-1);
+                return new Data(Data.t_string, text);
                 break;
             case 75:    // argument no comp_for
                 if (n == 1) {
@@ -49,9 +48,13 @@ function parseTree(root) {
                 }
                 break;
             case 74:    // arglist no star
+                var res = new Array();
+                for (var i = 0; i<root.getChildCount(); i+=2) {
+                    res.push(parseTree(root.getChild(i)));
+                }
+                return new Data(Data.t_arglist, res);
             case 71:    // testlist
             case 65:    // testlist_comp no comp_for
-            case 16:    // testlist_star_expr no star_expr
                 var res = new Array();
                 for (var i = 0; i<root.getChildCount(); i+=2) {
                     res.push(parseTree(root.getChild(i)));
@@ -68,11 +71,14 @@ function parseTree(root) {
                 switch (ch) {
                     case '(':
                         if (root.getChildCount() > 2) {
-                            return parseTree(root.getChild(1));
+                            return parseTree(root.getChild(1));    // arglist
+                        }
+                        else {
+                            return new Data(Data.t_arglist, new Array());    // no args, empty list
                         }
                         break;
                     case '[':
-                        return parseTree(root.getChild(1));
+                        return parseTree(root.getChild(1));    // subscriptlist
                         break;
                     case '.':
                         return parseTree(root.getChild(1));
@@ -84,11 +90,12 @@ function parseTree(root) {
                     child = root.getChild(0);
                     var childN = child.getChildCount();
                     if (childN == 0) {    // child is a leaf, NAME, NONE, TRUE, FALSE
-                        var literal = child.getChild(0).symbol.text;
+                        var literal = child.symbol.text;
                         switch (literal) {
                             case "True": return new Data(Data.t_bool, true); break;
                             case "False": return new Data(Data.t_bool, false); break;
                             case "None": return new Data(Data.t_bool, null); break;
+                            case "print": return new Data(Data.t_print, null); break;
                             default:
                                 var data = hashVar[literal];
                                 if (data) {
@@ -107,7 +114,10 @@ function parseTree(root) {
                     alert("Unimplemented atom");
                 }
             case 63:    // power
-                if (n == 2) {    // power: atom trailer
+                if (n == 1) {   // power: atom
+                    return parseTree(root.getChild(0));
+                }
+                else if (n == 2) {    // power: atom trailer
                     // function call
                     var atom = parseTree(root.getChild(0));
                     var trailer = parseTree(root.getChild(1));
@@ -225,7 +235,7 @@ function parseTree(root) {
 				
 				var exprlistRes = getVariableName(exprlistNode);
 				var testlistRes = parseTree(testlistNode);
-				for(int i=0;i<testlistRes.length;i++)
+				for(var i=0;i<testlistRes.length;i++)
 				{
 					hashVar[namespace+'for_'+exprlistRes] = testlistRes.val[i].val;
 					parseTree(suiteNode+'for_');
@@ -243,7 +253,22 @@ function parseTree(root) {
             case 37:    // compound_stmt
                 parseTree(root.getChild(0));
                 break;
-            case 15:    //expr_stmt
+            case 16:    // testlist_star_expr no star_expr
+                if (n == 1) {
+                    return parseTree(root.getChild(0));
+                }
+                else {
+                    var res = new Array();
+                    for (var i = 0; i<root.getChildCount(); i+=2) {
+                        res.push(parseTree(root.getChild(i)));
+                    }
+                    return new Data(Data.t_array, res);
+                }
+                break;
+            case 15:    // expr_stmt
+                if (n == 1) {    // trival case
+                    return parseTree(root.getChild(0));
+                }
                 var testlist_star_exprNode = root.getChild(0);
                 var testlist_star_exprRes = getVariableName(testlist_star_exprNode);
                 for(var i=1; i<2;i++)
@@ -254,7 +279,7 @@ function parseTree(root) {
                     {
                         var augassignRes = parseTree(node);
                         var testlistRes = parseTree(root.getChild(i+1));
-                        =====这里有问题 需要修改
+                        //=====这里有问题 需要修改
                         switch(augassignRes)
                         {
                             case "+=":hashVar[testlist_star_exprRes]+=testlistRes.val;break;
@@ -270,7 +295,8 @@ function parseTree(root) {
                         }
                         i+=2;
                     } else {
-                        hashVar[testlist_star_exprRes] =  parseTree(root.getChild(i+1));
+                        res = parseTree(root.getChild(i+1));
+                        hashVar[testlist_star_exprRes] = res;
                     }
                 }
                 return hashVar[testlist_star_exprRes];
@@ -283,8 +309,63 @@ function parseTree(root) {
             case 12:    // stmt
                 return parseTree(root.getChild(0));
                 break;
+            case 7:    // parameters
+                break;
+            case 6:    // funcdef
+                if (n == 5) {    // DEF NAME params : suite
+                    var funcName = getVariableName(root.getChild(1));
+
+                }
+                break;
+            case 1:    // file_input
+                for (var i = 0; i < n; i++) {
+                    var child = root.getChild(i);
+                    if (child.getChildCount() != 0)    {    // stmt, not "\n" or <EOF>
+                        parseTree(child);
+                    }
+                }
+                break;
+            default:
+                alert("Unknown token: " + ruleIndex);
         }
     }
+}
+
+function funcCall(funcData, arglist) {
+
+}
+
+function callPrint(arglist) {
+    var output = "";
+    for (var i = 0; i < arglist.length; i++) {
+        var data = arglist[i];
+        switch (data.type) {
+            case Data.t_integer:
+                output += data.val;
+                break;
+            case Data.t_string:
+                output += data.val;
+                break;
+            case Data.t_array:
+                // unimplemented
+                break;
+            case Data.t_bool:
+                switch (data.val) {
+                    case true: output += "True"; break;
+                    case false: output += "False"; break;
+                    case null: output += "None"; break;
+                    default: alert("boolean value error");
+                }
+                break;
+            default:
+                alert("Unknown data type");
+        }
+        if (i + 1 != arglist.length) {
+            output += " ";
+        }
+    }
+    output += "\n";
+    document.getElementById("outputs").innerHTML = "<p>" + output + "</p>";
 }
 
 function getVariableName(node) {
@@ -292,18 +373,32 @@ function getVariableName(node) {
     var child;
     while (n > 0) {    // 不考虑 a[3] = 4 这样的赋值语句
         child = node.getChild(0);
+        node = child;
         n = child.getChildCount();
     }
-    // now child is a leaf node
+    // now child is a leaf node\
     return child.symbol.text;
 }
 
 function evalTrailer(atom, trailer) {
-    var atomName = getVariableName(atom);
+    if (atom.type == Data.t_print) {    // print
+        if (trailer.type == Data.t_arglist) {
+            callPrint(trailer.val);
+            return;
+        }
+    }
+
+    var atomName = getVariableName(atom);  
     var atomData = hashVar[atomName];
     if (atomData) {
-        =====有待实现
+        //=====有待实现
         if (atomData.type == Data.t_func) {    // function
+            if (trailer.type == Data.t_arglist) {
+                funcCall(atomData, trailer);
+            }
+            else {
+                alert("Atom has not implemented [] or .")
+            }
         }
         else if (atomData.type == Data.t_array) {    // array
         }
@@ -341,6 +436,14 @@ function calc(val1, val2, operator) {
             default: alert("Unknown logic operator");
         }
         return new Data(Data.t_bool, res);
+    }
+    else if (val1.type == Data.t_string && val2.type == Data.t_string) {
+        if (operator == "+") {
+            return new Data(Data.t_string, val1.val + val2.val);
+        }
+        else {
+            alert("Cannot do " + operator + "on a string");
+        }
     }
     else {
         alert("calc type error");
@@ -390,7 +493,7 @@ function calcPower(atom, trailer) {
         return new Data(Data.t_integer, power)
     }
     else {
-        alert("calcPower");
+        alert("calcPower type error");
     }
 }
 
@@ -409,6 +512,8 @@ Data.t_key = 5;
 Data.t_bool = 10;
 Data.t_func = 11;
 Data.t_object = 12;
+Data.t_arglist = 13;
+Data.t_print = 14;
 
 var antlr4 = require('antlr4/index');
 var FPythonLexer = require('FPythonLexer');
@@ -422,8 +527,8 @@ document.getElementById("parse").addEventListener("click", function(){
     var parser = new FPythonParser.FPythonParser(tokens);
     parser.buildParseTrees = true;
     var tree = parser.file_input();
-    console.log(tree);
-    printTree(tree,0);
-    //parseTree(tree);
+    // console.log(tree);
+    // printTree(tree,0);
+    parseTree(tree);
 });
     
