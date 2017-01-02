@@ -1,4 +1,4 @@
-hashVar = [];
+hashVar = {};
 
 function printTree(root, indent) {
     if (!root) return;
@@ -13,7 +13,7 @@ function printTree(root, indent) {
         document.getElementById("tree").innerHTML += root + "<br />";
     }
     for (i = 0; i < n; i++) {
-        if (root.ruleIndex == 52)
+        if (root.ruleIndex == 64)
             console.log(root);
         printTree(root.getChild(i), indent + 1);
     }
@@ -37,22 +37,47 @@ function parseTree(root) {
             case 81:    // string
                 return Data(Data.t_string, root.getChild(0).symbol.text);
                 break;
-<<<<<<< HEAD
+            case 64:    // atom
+                if (n == 1) {    // NAME, number, string, NONE, TRUE, FALSE
+                    child = root.getChild(0);
+                    var childN = child.getChildCount();
+                    if (childN == 0) {    // child is a leaf, NAME, NONE, TRUE, FALSE
+                        var literal = child.getChild(0).symbol.text;
+                        switch (literal) {
+                            case "True": return Data(Data.t_bool, true); break;
+                            case "False": return Data(Data.t_bool, false); break;
+                            case "None": return Data(Data.t_bool, null); break;
+                            default:
+                                var data = hashVar[literal];
+                                if (data) {
+                                    return data;
+                                }
+                                else {
+                                    alert("Undefined symbol");
+                                }
+                        }
+                    }
+                    else {
+                        return parseTree(child);
+                    }
+                }
+                else {
+                    alert("Unimplemented atom");
+                }
             case 63:    // power
-                var childN = root.getChildCount();
-                if (childN == 2) {    // power: atom trailer
+                if (n == 2) {    // power: atom trailer
                     // function call
                     var atom = parseTree(root.getChild(0));
                     var trailer = parseTree(root.getChild(1));
                     return evalTrailer(atom, trailer);
                 }
-                else if (childN == 3) {    // power: atom ** factor
+                else if (n == 3) {    // power: atom ** factor
                     var atom = parseTree(root.getChild(0));
                     var factor = parseTree(root.getChild(1));
                     var power = calcPower(atom, factor);
                     return Data(Data.t_integer, power);
                 }
-                else if (childN == 4) {    // power: atom trailer ** factor
+                else if (n == 4) {    // power: atom trailer ** factor
                     var atom = parseTree(root.getChild(0));
                     var trailer = parseTree(root.getChild(1));
                     var factor = parseTree(root.getChild(3));
@@ -65,11 +90,10 @@ function parseTree(root) {
                 }
                 break;
             case 62:    // factor
-                var childN = root.getChildCount();
-                if (childN == 1) {    // factor: power
+                if (n == 1) {    // factor: power
                     return parseTree(root.getChild(0));
                 }
-                else if (childN == 2) {    // factor: (+|-|~) factor
+                else if (n == 2) {    // factor: (+|-|~) factor
                     var sign = root.getChild(0).symbol.text;
                     var val = parseTree(root.getChild(1));
                     return signFactor(sign, val);
@@ -78,6 +102,8 @@ function parseTree(root) {
                     alert("factor arg n");
                 }
                 break;
+            case 54:    // star
+                return parseTree(root.getChild(0));
             case 61:    // term
             case 60:    // arith
             case 59:    // shift
@@ -86,11 +112,10 @@ function parseTree(root) {
             case 56:    // expr
             case 51:    // and_test
             case 50:    // or_test
-                var childN = root.getChildCount();
-                if (childN == 1) {    // parent: child
+                if (n == 1) {    // parent: child
                     return parseTree(root.getChild(0));
                 }
-                else if (childN == 3) {    // parent: child op child
+                else if (n == 3) {    // parent: child op child
                     var val1 = parseTree(root.getChild(0));
                     var val2 = parseTree(root.getChild(2));
                     var operator = root.getChild(1).symbol.text;
@@ -101,11 +126,10 @@ function parseTree(root) {
                 }
                 break;
             case 53:    // comparison
-                var childN = root.getChildCount();
-                if (childN == 1) {    // parent: child
+                if (n == 1) {    // parent: child
                     return parseTree(root.getChild(0));
                 }
-                else if (childN == 3) {    // parent: child op child
+                else if (n == 3) {    // parent: child op child
                     var val1 = parseTree(root.getChild(0));
                     var val2 = parseTree(root.getChild(2));
                     var operator = root.getChild(1).symbol.text;
@@ -116,11 +140,10 @@ function parseTree(root) {
                 }
                 break;
             case 52:    // not test
-                var childN = root.getChildCount();
-                if (childN == 1) {
+                if (n == 1) {
                     return parseTree(root.getChild(0));
                 }
-                if (childN == 2) {
+                if (n == 2) {
                     var boolean = parseTree(root.getChild(1));
                     if (boolean.type == Data.t_bool) {
                         return Data(Data.t_bool, !boolean.val);
@@ -137,7 +160,7 @@ function parseTree(root) {
                 
                 var exprlistRes = getVariableName(exprlistNode);
                 var testlistRes = parseTree(testlistNode);
-                for(int i=0;i<testlistRes.length;i++)
+                for(var i=0;i<testlistRes.length;i++)
                 {
                     hashVar[namespace+'for_'+exprlistRes] = testlistRes.val[i].val;
                     parseTree(suiteNode+'for_');
@@ -170,7 +193,7 @@ function parseTree(root) {
                 }
             case 13:    //simple_stmt
                 for(var i=0; i<n; i+=2)
-                    parseTree(root.getChild(i));    
+                    parseTree(root.getChild(i));
                 return Data(Data.t_null,0);
             case 14:    //small_stmt
                 return parseTree(root.getChild(0));
@@ -207,6 +230,8 @@ function parseTree(root) {
         }
     }
 }
+
+function getVariableName(){};
 
 function calc(val1, val2, operator) {
     var res;
