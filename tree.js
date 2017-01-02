@@ -1,4 +1,6 @@
-function printTree(root, indent=0) {
+hashVar = [];
+
+function printTree(root, indent) {
     if (!root) return;
     for (var i = 0; i < indent; i++) {
         document.getElementById("tree").innerHTML += ".&nbsp";
@@ -35,6 +37,7 @@ function parseTree(root) {
             case 81:    // string
                 return Data(Data.t_string, root.getChild(0).symbol.text);
                 break;
+<<<<<<< HEAD
             case 63:    // power
                 var childN = root.getChildCount();
                 if (childN == 2) {    // power: atom trailer
@@ -127,6 +130,80 @@ function parseTree(root) {
                     }
                 }
                 break;
+            case 40:    //for_stmt
+                var exprlistNode = root.getChild(1);
+                var testlistNode = root.getChild(3);
+                var suiteNode = root.getChild(5);
+                
+                var exprlistRes = getVariableName(exprlistNode);
+                var testlistRes = parseTree(testlistNode);
+                for(int i=0;i<testlistRes.length;i++)
+                {
+                    hashVar[namespace+'for_'+exprlistRes] = testlistRes.val[i].val;
+                    parseTree(suiteNode+'for_');
+                }
+                return Data(Data.t_null,0);
+            case 70:    //exprlist 只处理了只有一个star_expr的情况
+                var star_exprNode = root.getChild(0);
+                var star_exprRes = parseTree(star_exprNode);
+                return star_exprRes;
+            case 16:    //star_expr 直接去掉star
+                var exprNode;
+                if( n == 2 )
+                    exprNode = root.getChild(1);
+                else
+                    exprNode = root.getChild(0);
+                return parseTree(exprNode);
+            case 71:    //testlist
+                var testNode = root.getChild(0);
+                var res = new Array();
+                res.push(parseTree(testNode));
+                for(var i = 2; i<n ; i+=2)
+                    res.push(parseTree(root.getChild(i)));
+                return Data(Data.t_array,res);
+            case  45:   //suite
+                if( n == 1 ) return parseTree(root.getChild(0));
+                else {
+                    for(var i=2; i<n-1; i++)
+                        parseTree(root.getChild(i)+'suite_');
+                    return Data(Data.t_null,0);
+                }
+            case 13:    //simple_stmt
+                for(var i=0; i<n; i+=2)
+                    parseTree(root.getChild(i));    
+                return Data(Data.t_null,0);
+            case 14:    //small_stmt
+                return parseTree(root.getChild(0));
+            case 15:    //expr_stmt
+                var testlist_star_exprNode = root.getChild(0);
+                var testlist_star_exprRes = getVariableName(testlist_star_exprNode);
+                for(var i=1; i<2;i++)
+                {
+                    var node = root.getChild(i);
+                    var res;
+                    if( node.ruleIndex == 17 ) // augassign
+                    {
+                        var augassignRes = parseTree(node);
+                        var testlistRes = parseTree(root.getChild(i+1));
+                        switch(augassignRes)
+                        {
+                            case "+=":hashVar[testlist_star_exprRes]+=testlistRes.val;break;
+                            case "-=":hashVar[testlist_star_exprRes]-=testlistRes.val;break;
+                            case "*=":hashVar[testlist_star_exprRes]*=testlistRes.val;break;
+                            case "/=":hashVar[testlist_star_exprRes]/=testlistRes.val;break;
+                            case "%=":hashVar[testlist_star_exprRes]%=testlistRes.val;break;
+                            case "&=":hashVar[testlist_star_exprRes]&=testlistRes.val;break;
+                            case "|=":hashVar[testlist_star_exprRes]|=testlistRes.val;break;
+                            case "^=":hashVar[testlist_star_exprRes]^=testlistRes.val;break;
+                            case "<<=":hashVar[testlist_star_exprRes]<<=testlistRes.val;break;
+                            case ">>=":hashVar[testlist_star_exprRes]>>=testlistRes.val;break;
+                        }
+                        i+=2;
+                    } else {
+                        hashVar[testlist_star_exprRes] =  parseTree(root.getChild(i+1));
+                    }
+                }
+                return hashVar[testlist_star_exprRes];
         }
     }
 }
@@ -218,6 +295,10 @@ function Data(type, val) {
 Data.t_integer = 0;
 Data.t_string = 1;
 Data.t_bool = 10;
+Data.t_null = 2;
+Data.t_array = 3;
+Data.t_error = 4;
+Data.t_key = 5;
 
 var antlr4 = require('antlr4/index');
 var FPythonLexer = require('FPythonLexer');
@@ -232,7 +313,7 @@ document.getElementById("parse").addEventListener("click", function(){
     parser.buildParseTrees = true;
     var tree = parser.file_input();
     console.log(tree);
-    printTree(tree);
+    printTree(tree,0);
     //parseTree(tree);
 });
     
