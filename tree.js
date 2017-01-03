@@ -191,7 +191,8 @@ function parseTree(root) {
                 else if (n == 3) {    // parent: child op child
                     var val1 = parseTree(root.getChild(0));
                     var val2 = parseTree(root.getChild(2));
-                    var operator = root.getChild(1).symbol.text;
+                    console.log(root);
+                    var operator = root.getChild(1).getChild(0).symbol.text;
                     return comp(val1, val2, operator);
                 }
                 else {
@@ -225,7 +226,7 @@ function parseTree(root) {
                 if( n == 1 ) return parseTree(root.getChild(0));
                 else {
                     for(var i=2; i<n-1; i++)
-                        parseTree(root.getChild(i)+'suite_');
+                        parseTree(root.getChild(i));
                     return new Data(Data.t_null,0);
                 }
 			case 40:     //for_stmt
@@ -242,12 +243,16 @@ function parseTree(root) {
 				}
 				return new Data(Data.t_null,0);
             case 38:    // if_stmt no else
-                var testNode = root.getChild(1);
-                var suiteNode = root.getChild(3);
-
-                var test = parseTree(testNode);
-                if (test.val == true) {
-                    return parseTree(suiteNode);
+                // if_stmt: IF test : suite (ELIF test : suite)* [ELSE : suite]
+                // If it has an ELSE clause, the number of its children must be odd, vice versa
+                for (var i = 0; i < n; i += 4) {
+                    var testRes = parseTree(root.getChild(i + 1));
+                    if (getBoolean(testRes) == true) {
+                        return parseTree(root.getChild(i + 3));
+                    }
+                }
+                if (i == n + 1) {    // has an ELSE clause
+                    return parseTree(root.getChild(n - 1));
                 }
                 break;
             case 37:    // compound_stmt
@@ -326,7 +331,7 @@ function parseTree(root) {
                 }
                 break;
             default:
-                alert("Unknown token: " + ruleIndex);
+                alert("Unknown rule: " + ruleIndex);
         }
     }
 }
@@ -336,36 +341,49 @@ function funcCall(funcData, arglist) {
 }
 
 function callPrint(arglist) {
-    var output = "";
+    var output = [];
     for (var i = 0; i < arglist.length; i++) {
         var data = arglist[i];
         switch (data.type) {
             case Data.t_integer:
-                output += data.val;
+                output.push(data.val);
                 break;
             case Data.t_string:
-                output += data.val;
+                output.push(data.val);
                 break;
             case Data.t_array:
                 // unimplemented
                 break;
             case Data.t_bool:
                 switch (data.val) {
-                    case true: output += "True"; break;
-                    case false: output += "False"; break;
-                    case null: output += "None"; break;
+                    case true: output.push("True"); break;
+                    case false: output.push("False"); break;
+                    case null: output.push("None"); break;
                     default: alert("boolean value error");
                 }
                 break;
             default:
                 alert("Unknown data type");
         }
-        if (i + 1 != arglist.length) {
-            output += " ";
-        }
     }
-    output += "\n";
-    document.getElementById("outputs").innerHTML = "<p>" + output + "</p>";
+    document.getElementById("outputs").innerHTML += "<p>" + output.join(' ') + "</p>";
+}
+
+function getBoolean(data) {
+    if (!data)
+        return false
+    switch (data.type) {
+        case Data.t_bool:
+            return data.val == true;
+        case Data.t_integer:
+            return data.val != 0;
+        case Data.t_string:
+            return !!data.val;
+        case Data.t_array:
+            return data.val.length != 0;
+        default:
+            alert("Cannot get boolean value");
+    }
 }
 
 function getVariableName(node) {
