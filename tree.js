@@ -120,7 +120,9 @@ function parseTree(root) {
                                 list.push(parseTree(child.getChild(i)));
                             }
                             return new Data(Data.t_array, list);
-                        case '(': break;
+                        case '(':
+                            var resArray = parseTree(root.getChild(1));
+                            return resArray.val[0];
                         case '{': break;
                         default: alert("Unknown list bracer")
                     }
@@ -480,6 +482,14 @@ function calc(val1, val2, operator) {
         }
         else {
             alert("Cannot do " + operator + "on a string");
+        }
+    }
+    else if (val1.type == Data.t_array && val2.type == Data.t_array) {
+        if (operator == "+") {
+            return new Data(Data.t_array, val1.val.concat(val2.val))
+        }
+        else {
+            alert("Cannot do " + operator + "on a list");
         }
     }
     else {
