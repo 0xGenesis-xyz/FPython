@@ -87,7 +87,7 @@ function parseTree(root) {
                 break;
             case 64:    // atom
                 if (n == 1) {    // NAME, number, string, NONE, TRUE, FALSE
-                    child = root.getChild(0);
+                    var child = root.getChild(0);
                     var childN = child.getChildCount();
                     if (childN == 0) {    // child is a leaf, NAME, NONE, TRUE, FALSE
                         var literal = child.symbol.text;
@@ -102,7 +102,7 @@ function parseTree(root) {
                                     return data;
                                 }
                                 else {
-                                    alert("Undefined symbol");
+                                    alert("Undefined symbol: " + literal);
                                 }
                         }
                     }
@@ -110,8 +110,20 @@ function parseTree(root) {
                         return parseTree(child);
                     }
                 }
-                else {
-                    alert("Unimplemented atom");
+                else {    // list, tuple, dict, yield
+                    switch (root.getChild(0).symbol.text) {
+                        case '[':
+                            var list = [];
+                            var child = root.getChild(1);
+                            var childN = child.getChildCount();
+                            for (var i = 0; i < childN; i += 2) {
+                                list.push(parseTree(child.getChild(i)));
+                            }
+                            return new Data(Data.t_array, list);
+                        case '(': break;
+                        case '{': break;
+                        default: alert("Unknown list bracer")
+                    }
                 }
             case 63:    // power
                 if (n == 1) {   // power: atom
@@ -191,7 +203,6 @@ function parseTree(root) {
                 else if (n == 3) {    // parent: child op child
                     var val1 = parseTree(root.getChild(0));
                     var val2 = parseTree(root.getChild(2));
-                    console.log(root);
                     var operator = root.getChild(1).getChild(0).symbol.text;
                     return comp(val1, val2, operator);
                 }
@@ -236,10 +247,11 @@ function parseTree(root) {
 				
 				var exprlistRes = getVariableName(exprlistNode);
 				var testlistRes = parseTree(testlistNode);
-				for(var i=0;i<testlistRes.length;i++)
+                var list = testlistRes.val[0].val;
+				for(var i = 0 ; i < list.length;i++)
 				{
-					hashVar[namespace+'for_'+exprlistRes] = testlistRes.val[i].val;
-					parseTree(suiteNode+'for_');
+					hashVar[exprlistRes] = list[i];
+					parseTree(suiteNode);
 				}
 				return new Data(Data.t_null,0);
             case 38:    // if_stmt no else
@@ -341,32 +353,40 @@ function funcCall(funcData, arglist) {
 }
 
 function callPrint(arglist) {
-    var output = [];
-    for (var i = 0; i < arglist.length; i++) {
-        var data = arglist[i];
+    function getString(data, strInArray) {
         switch (data.type) {
-            case Data.t_integer:
-                output.push(data.val);
-                break;
-            case Data.t_string:
-                output.push(data.val);
-                break;
             case Data.t_array:
-                // unimplemented
-                break;
+                var list = data.val;
+                var res = []
+                for (var i = 0; i < list.length; i++)
+                    res.push(getString(list[i], true));
+                res = res.join(', ');
+                res = "[" + res + "]";
+                return res;
+            case Data.t_arglist:
+                var list = data.val;
+                var res = []
+                for (var i = 0; i < list.length; i++)
+                    res.push(getString(list[i], false));
+                res = res.join(' ');
+                return res;
             case Data.t_bool:
                 switch (data.val) {
-                    case true: output.push("True"); break;
-                    case false: output.push("False"); break;
-                    case null: output.push("None"); break;
+                    case true: return "True";
+                    case false: return "False";
+                    case null: return "None";
                     default: alert("boolean value error");
                 }
-                break;
+            case Data.t_string:
+                if (strInArray)
+                    return "\'" + data.val + "\'";
+                else 
+                    return data.val;
             default:
-                alert("Unknown data type");
+                return "" + data.val;
         }
     }
-    document.getElementById("outputs").innerHTML = output.join(' ');
+    document.getElementById("outputs").innerHTML += getString(arglist, false) + "\n"
 }
 
 function getBoolean(data) {
@@ -401,7 +421,7 @@ function getVariableName(node) {
 function evalTrailer(atom, trailer) {
     if (atom.type == Data.t_print) {    // print
         if (trailer.type == Data.t_arglist) {
-            callPrint(trailer.val);
+            callPrint(trailer);
             return;
         }
     }
@@ -429,7 +449,6 @@ function evalTrailer(atom, trailer) {
 }
 
 function calc(val1, val2, operator) {
-    var res;
     if (val1.type == Data.t_integer && val2.type == Data.t_integer) {
         switch (operator) {
             case "&": res = val1.val & val2.val; break;
@@ -538,6 +557,7 @@ var FPythonLexer = require('FPythonLexer');
 var FPythonParser = require('FPythonParser');
 document.getElementById("parse").addEventListener("click", function(){
     var input = document.getElementById("code").value;
+    document.getElementById("outputs").innerHTML = "";
     input = SolveIndent(input);
     var chars = new antlr4.InputStream(input);
     var lexer = new FPythonLexer.FPythonLexer(chars);
