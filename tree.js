@@ -366,7 +366,7 @@ function callPrint(arglist) {
                 alert("Unknown data type");
         }
     }
-    document.getElementById("outputs").innerHTML += "<p>" + output.join(' ') + "</p>";
+    document.getElementById("outputs").innerHTML = output.join(' ');
 }
 
 function getBoolean(data) {
