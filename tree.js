@@ -49,14 +49,17 @@ function parseTree(root, env) {
                 break;
             case 74:    // arglist no star
                 var res = new Array();
-                for (var i = 0; i < n; i += 2)
-                    res.push(parseTree(root.getChild(i), env));
+                for (var i = 0; i < n; i += 2) {
+                    var elem = parseTree(root.getChild(i), env);
+                    res.push(elem);
+                }
                 return new Data(Data.t_arglist, res);
             case 71:    // testlist
             case 65:    // testlist_comp no comp_for
                 var res = new Array();
-                for (var i = 0; i<root.getChildCount(); i+=2) {
-                    res.push(parseTree(root.getChild(i), env));
+                for (var i = 0; i < n; i += 2) {
+                    var elem = parseTree(root.getChild(i), env);
+                    res.push(elem);
                 }
                 return new Data(Data.t_array, res);
                 break;
@@ -71,7 +74,7 @@ function parseTree(root, env) {
                 else {
                     alert("Slicing is not implemented");
                 }
-            case 67:
+            case 67:    // subscriptlist
                 if (n == 1) {
                     return parseTree(root.getChild(0), env);
                 }
@@ -130,7 +133,7 @@ function parseTree(root, env) {
                             var child = root.getChild(1);
                             var childN = child.getChildCount();
                             for (var i = 0; i < childN; i += 2) {
-                                list.push(parseTree(child.getChild(i)), env);
+                                list.push(parseTree(child.getChild(i), env));
                             }
                             return new Data(Data.t_array, list);
                         case '(':
@@ -676,10 +679,7 @@ document.getElementById("parse").addEventListener("click", function(){
     var tokens  = new antlr4.CommonTokenStream(lexer);
     var parser = new FPythonParser.FPythonParser(tokens);
     parser.buildParseTrees = true;
-    var tree = parser.file_input();
-    // console.log(tree);
-    // printTree(tree,0);
-    var env = new Env(null);
+    var tree = parser.file_input();    var env = new Env(null);
     parseTree(tree, env);
 });
     
