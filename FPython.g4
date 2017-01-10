@@ -546,7 +546,7 @@ string
 
 number
  : integer
-// | FLOAT_NUMBER
+ | FLOAT_NUMBER
  ;
 
 /// integer        ::=  decimalinteger | octinteger | hexinteger | bininteger
