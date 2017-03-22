@@ -133,7 +133,8 @@ function parseTree(root, env) {
                             var child = root.getChild(1);
                             var childN = child.getChildCount();
                             for (var i = 0; i < childN; i += 2) {
-                                list.push(parseTree(child.getChild(i), env));
+                                var elem = parseTree(child.getChild(i), env);
+                                list.push(elem);
                             }
                             return new Data(Data.t_array, list);
                         case '(':
@@ -274,7 +275,7 @@ function parseTree(root, env) {
 				var exprlistRes = getVariableName(exprlistNode);
 				var testlistRes = parseTree(testlistNode, env);
                 var list = testlistRes.val[0].val;
-				for(var i = 0 ; i < list.length; i += 2)
+				for(var i = 0 ; i < list.length; i++)
 				{
                     var childEnv = new Env(env);
                     childEnv.bind(exprlistRes, list[i]);
@@ -679,7 +680,8 @@ document.getElementById("parse").addEventListener("click", function(){
     var tokens  = new antlr4.CommonTokenStream(lexer);
     var parser = new FPythonParser.FPythonParser(tokens);
     parser.buildParseTrees = true;
-    var tree = parser.file_input();    var env = new Env(null);
+    var tree = parser.file_input();
+    var env = new Env(null);
     parseTree(tree, env);
 });
     
